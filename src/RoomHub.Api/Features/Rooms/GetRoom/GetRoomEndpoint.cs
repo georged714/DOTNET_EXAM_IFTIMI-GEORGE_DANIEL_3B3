@@ -1,4 +1,6 @@
-using RoomHub.Api.Services;
+using RoomHub.Api.Common;
+using RoomHub.Api.Domain.Common;
+using RoomHub.Api.Domain.Rooms;
 
 namespace RoomHub.Api.Features.Rooms.GetRoom;
 
@@ -8,9 +10,17 @@ public static class GetRoomEndpoint
 {
     public static void MapGetRoom(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/rooms/{id:guid}", (Guid id, RoomService service) =>
+        app.MapGet("/api/rooms/{id:guid}", async (
+            Guid id,
+            IQueryHandler<GetRoomQuery, Result<Room>> handler,
+            CancellationToken cancellationToken) =>
         {
-            var room = service.Get(id);
+            var result = await handler.HandleAsync(new GetRoomQuery(id), cancellationToken);
+
+            if (result.IsFailure)
+                return result.Error.ToProblem();
+
+            var room = result.Value;
             return Results.Ok(new GetRoomResponse(room.Id, room.Name, room.Capacity));
         }).WithTags("Rooms");
     }
